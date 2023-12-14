@@ -119,3 +119,84 @@ select odate, sum(amt) from db.orders group by odate order by sum(amt) desc;
 
 
 /*  LAB 4   */
+select onum, cname from db.orders, db.customers where db.customers.cnum = db.orders.cnum;
+
+select onum, cname, sname from db.orders, db.customers, db.sellers where
+                                                    db.customers.cnum = db.orders.cnum and db.orders.snum = db.sellers.snum;
+
+select cname, sname, comm from db.sellers, db.customers, db.orders
+                          where db.sellers.comm > .12
+                            and db.sellers.snum = db.orders.snum
+                            and db.orders.cnum = db.customers.cnum;
+
+select distinct sname, comm from db.customers, db.sellers, db.orders
+                   where db.customers.rating > 100
+                     and db.customers.snum = db.sellers.snum;
+
+
+/*  LAB 5   */
+select * from db.orders where cnum = (select cnum from db.customers where cname = 'Cisneros');
+
+/*  5.2 'усредненные заказы'?  */
+
+select sum, snum from (select sum(amt), snum from db.orders group by snum) as a where sum > (select max(amt) from db.orders);
+
+select cnum, cname from (select * from db.customers as "outer" where ("outer".rating, "outer".city) in (select max("inner".rating), "inner".city from db.customers as "inner" group by "inner".city)) as result;
+
+select snum, sname from db.sellers as a where a.snum != any(select snum from db.customers as b where a.city = b.city);
+
+
+/*  LAB 6   */
+select sname from db.sellers as a where exists (select cname from db.customers as b where a.snum = b.snum and b.rating = 300);
+
+/* 6.2 никак, юнион не предназначен для этого. */
+
+select sname from db.sellers as a where exists (select cname from db.customers as b where a.city = b.city and a.snum != b.snum);
+
+select cname from db.customers as a where
+                                        exists(select cname from db.customers as b where
+                                                                                       a.snum = b.snum and
+                                                                                       a.cnum != b.cnum and
+                                                                                       exists(select onum from db.orders as c where b.cnum = c.cnum));
+
+select cname
+from db.customers as a
+where a.rating > any (select rating
+                      from db.customers as b
+                      where b.snum = (select snum
+                                      from db.sellers as c
+                                      where c.sname = 'Serres'
+                                      )
+                      );
+
+/* 6.6 "Что будет выведено вышеупомянутой командой?" - видимо, ничего, раз нет команды. */
+
+select sname
+from db.sellers as a
+where a.city != all(select city
+                    from db.customers as b
+                    where b.snum = a.snum
+                    );
+
+select onum, amt
+from db.orders as a
+where a.amt >= any(select amt
+                   from db.orders as b
+                   where b.cnum = any(select cnum
+                                      from db.customers as c
+                                      where c.city = 'London'
+                                      )
+                   );
+
+/* 6.9 - сравнение идёт с любой суммой, так что логично использовать min, а не max, разве нет? */
+select onum, amt
+from db.orders as a
+where a.amt >= (select min(amt)
+                   from db.orders as b
+                   where b.cnum = any(select cnum
+                                      from db.customers as c
+                                      where c.city = 'London'
+                                      )
+                   );
+
+/*  LAB 7   */
