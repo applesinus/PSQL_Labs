@@ -4,7 +4,7 @@ create table db.sellers (
     snum integer primary key,
     sname varchar not null,
     city varchar not null,
-    comm decimal not null
+    comm decimal
 );
 insert into db.sellers values
 (1001, 'Peel', 'London', .12),
@@ -56,6 +56,7 @@ insert into db.orders values
 select * from db.customers;
 select * from db.sellers;
 select * from db.orders;
+
 drop table db.orders;
 drop table db.customers;
 drop table db.sellers;
@@ -200,3 +201,170 @@ where a.amt >= (select min(amt)
                    );
 
 /*  LAB 7   */
+select cname, city, rating, 'Высокий Рейтинг' as "comment" from db.customers where rating >= 200
+union
+select cname, city, rating, 'Низкий Рейтинг' as "comment" from db.customers where rating < 200;
+
+select cnum, cname as "name"
+from db.customers as a
+where 1 < (select count(onum)
+          from db.orders as b
+          where a.cnum = b.cnum)
+union
+select snum, sname as "name"
+from db.sellers as a
+where 1 < (select count(onum)
+          from db.orders as b
+          where a.snum = b.snum)
+order by "name";
+
+select snum as "num" from db.sellers where city = 'San Jose'
+union
+(
+select cnum as "num" from db.customers where city = 'San Jose'
+union all
+select onum as "num" from db.orders where odate = date '1990-10-03'
+);
+
+/*  LAB 8   */
+select * from db.sellers;
+insert into db.sellers values (1100, 'Bianco', 'San Jose', null);
+delete from db.sellers where snum = 1100;
+
+select * from db.orders;
+delete from db.orders where cnum = (select cnum from db.customers where cname = 'Clemens');
+insert into db.orders values
+(3008, 4723.00, date '1990-10-05', 2006, 1001),
+(3011, 9891.88, date '1990-10-06', 2006, 1001);
+
+select * from db.customers;
+update db.customers set rating = rating+100 where city = 'Rome';
+update db.customers set rating = rating-100 where city = 'Rome';
+
+select * from db.customers;
+update db.customers
+set snum = (select snum from db.sellers where sname ='Motika')
+where snum = (select snum from db.sellers where sname ='Serres');
+update db.customers set snum = 1002 where cnum = 2003;
+update db.customers set snum = 1002 where cnum = 2004;
+
+/*  LAB 9.1   */
+create table db.multicust (
+    snum integer primary key,
+    sname varchar not null,
+    city varchar not null,
+    comm decimal
+);
+select * from db.multicust;
+
+insert into db.multicust
+    (select *
+     from db.sellers
+     where snum in (select snum
+                    from db.orders
+                    group by snum
+                    having count(onum) > 1
+                    )
+     );
+select * from db.multicust;
+
+drop table db.multicust;
+
+/*  LAB 9.2,9.3   */
+select * from db.customers;
+delete from db.customers where cnum not in (select distinct cnum from db.orders);
+select * from db.customers;
+
+select * from db.sellers;
+update db.sellers
+set comm = comm + .2
+where snum in (select snum
+               from db.orders
+               group by snum
+               having sum(amt) > 3000
+              );
+select * from db.sellers;
+update db.sellers
+set comm = comm - .2
+where snum in (select snum
+               from db.orders
+               group by snum
+               having sum(amt) > 3000
+              );
+
+/*  LAB 10  */
+create table db.customers (
+    cnum integer primary key,
+    cname varchar not null,
+    city varchar not null,
+    rating integer not null,
+    snum integer not null,
+    foreign key (snum) references db.sellers(snum)
+);
+
+select * from db.orders order by odate;
+
+alter table db.orders add constraint onum_unique unique (onum);
+
+create unique index snum_index on db.orders (snum);
+
+/*
+10.5 - пусть данные значения - 100 и Motika.
+я знаю, что это делается через хранимые функции,
+но типа их в этом курсе как будто бы нет
+*/
+select cname
+from db.customers as a
+where cnum = (select cnum
+              from db.customers as b
+              where b.rating = 100 and
+                    b.snum = 'Motika');
+
+/*  LAB 11  */
+create table db.orders (
+    onum integer primary key,
+    amt decimal,
+    odate date not null,
+    cnum integer,
+    snum integer,
+    foreign key (cnum) references db.customers(cnum),
+    foreign key (snum) references db.sellers(snum),
+    constraint unique_cnum_and_snum unique (cnum, snum)
+);
+
+create table db.sellers (
+    snum integer primary key,
+    sname varchar not null check (sname between 'A' and 'M' ),
+    city varchar not null,
+    comm decimal default .1
+);
+
+create table db.orders (
+    onum integer primary key,
+    amt decimal,
+    odate date not null,
+    cnum integer not null check (cnum < onum),
+    snum integer not null check (snum < cnum),
+    foreign key (cnum) references db.customers(cnum),
+    foreign key (snum) references db.sellers(snum),
+    constraint unique_cnum_and_snum unique (cnum, snum)
+);
+
+create table db.cityorders (
+    onum integer references db.orders(onum) primary key,
+    amt decimal references db.orders(amt),
+    snum integer references db.orders(snum),
+    cnum integer references db.customers(cnum),
+    city varchar references db.customers(city)
+);
+
+alter table db.orders
+add column prev integer references db.orders(onum);
+update db.orders as a
+set prev = (select max(onum)
+            from db.orders as b
+            where b.cnum = a.cnum and b.onum < a.onum
+    );
+
+/*  LAB 12  */
+
