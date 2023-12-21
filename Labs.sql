@@ -318,7 +318,12 @@ from db.customers as a
 where cnum = (select cnum
               from db.customers as b
               where b.rating = 100 and
-                    b.snum = 'Motika');
+                    b.snum = (
+                        select snum
+                        from db.sellers
+                        where sname = 'Motika'
+                        )
+              );
 
 /*  LAB 11  */
 create table db.orders (
@@ -368,3 +373,49 @@ set prev = (select max(onum)
 
 /*  LAB 12  */
 
+create view db.high_rated_customers as
+    select *
+    from db.customers as a
+    where rating = (select max(rating)
+                    from db.customers as b);
+select * from db.high_rated_customers;
+drop view db.high_rated_customers;
+
+create view db.sellers_cities as
+    select city, snum from db.sellers;
+select * from db.sellers_cities;
+drop view db.sellers_cities;
+
+create view db.sellers_stats as
+    select snum, round(avg(amt), 2), sum(amt) from db.orders group by snum;
+select * from db.sellers_stats;
+drop view db.sellers_stats;
+
+create view db.multi_sellers as
+    select snum from db.orders group by snum having count(cnum) > 1;
+select * from db.multi_sellers;
+drop view db.multi_sellers;
+
+CREATE VIEW db.Custotals
+             AS SELECT cname, SUM (amt)
+                FROM db.orders, db.customers
+                WHERE db.orders.cnum = db.customers.cnum
+                GROUP BY cname;
+
+create view db.Commissions as
+    select comm, snum from db.sellers;
+select * from db.Commissions;
+drop view db.Commissions;
+
+create table db.Entryorders (
+    onum integer primary key,
+    amt decimal,
+    odate date not null default current_date,
+    cnum integer not null check (cnum < onum),
+    snum integer not null check (snum < cnum),
+    foreign key (cnum) references db.customers(cnum),
+    foreign key (snum) references db.sellers(snum),
+    constraint unique_cnum_and_snum unique (cnum, snum)
+);
+select * from db.Entryorders;
+drop table db.Entryorders;
